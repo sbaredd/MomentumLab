@@ -1,0 +1,29 @@
+-- ============================================================================
+-- MomentumLab
+-- Base Quality Validation
+-- Diagnostic 1B: Corrected Pullback Behaviour
+--
+-- Purpose:
+--   Examine the behaviour of the correction from the base-start high
+--   to the base low.
+--
+-- Definition:
+--   Base Start      = swing-high session
+--   Pullback Session = sessions AFTER base_start_date
+--                      through base_low_date inclusive
+--
+-- Measures:
+--   - Pullback sessions
+--   - Down / Up / Flat sessions
+--   - Average and maximum daily range
+--   - Average down-day volume
+--   - Average up-day volume
+--   - Down-vs-up volume ratio
+--   - Correction speed (% per session)
+--
+-- Status:
+--   VALIDATED
+--
+-- Scoring:
+--   None - diagnostic research only
+-- ============================================================================

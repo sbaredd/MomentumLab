@@ -1,0 +1,25 @@
+-- ============================================================================
+-- MomentumLab
+-- Base Quality Validation
+-- Diagnostic 1C: Post-Low Range Contraction / Base Tightening
+--
+-- Purpose:
+--   Determine whether volatility contracts after the base low
+--   as the setup matures toward the as-of date.
+--
+-- Measures:
+--   - Total post-low sessions
+--   - Early 3-session average range %
+--   - Recent 3-session average range %
+--   - Range contraction %
+--
+-- Interpretation:
+--   Positive contraction % = volatility contracted
+--   Negative contraction % = volatility expanded
+--
+-- Status:
+--   VALIDATED
+--
+-- Scoring:
+--   None - diagnostic research only
+-- ============================================================================

@@ -1,0 +1,27 @@
+-- ============================================================================
+-- MomentumLab
+-- Base Quality Validation
+-- Diagnostic 1D: Post-Low Price Structure
+--
+-- Purpose:
+--   Determine whether price structure improves after the base low
+--   as the stock develops the right side of the base.
+--
+-- Measures:
+--   - Post-low sessions
+--   - Higher-high days
+--   - Higher-low days
+--   - Lower-high days
+--   - Lower-low days
+--   - Higher-low ratio %
+--   - Higher-high ratio %
+--   - Lower-low ratio %
+--   - Maximum close recovery %
+--   - Maximum price recovery %
+--
+-- Status:
+--   VALIDATED
+--
+-- Scoring:
+--   None - diagnostic research only
+-- ============================================================================
