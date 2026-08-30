@@ -23,27 +23,23 @@ WITH params AS
     SELECT DATE '2026-08-13' AS trade_date
 ),
 
-current_candidates
+current_candidates AS
 (
-    symbol,
-    prior_swing_high_date,
-    prior_swing_high,
-    base_low_date,
-    base_low
-) AS
-(
-    VALUES
-        ('5PAISA',     DATE '2026-07-27', 381.95::numeric,
-                       DATE '2026-07-30', 344.00::numeric),
+    SELECT
+        s.symbol,
+        b.prior_swing_high_date,
+        b.prior_swing_high, 
+        b.base_low_date,
+        b.base_low
 
-        ('CHENNPETRO', DATE '2026-07-23', 1354.00::numeric,
-                       DATE '2026-07-28', 1150.00::numeric),
+    FROM trn.stock_base_episode_daily b
 
-        ('DEEPINDS',   DATE '2026-07-20', 487.00::numeric,
-                       DATE '2026-07-24', 453.60::numeric),
+    JOIN ref.ref_nse_equity_security s
+      ON s.security_id = b.security_id
 
-        ('KTKBANK',    DATE '2026-07-15', 280.00::numeric,
-                       DATE '2026-07-17', 268.35::numeric)
+    CROSS JOIN params p
+
+    WHERE b.trade_date = p.trade_date
 ),
 
 -- --------------------------------------------------------------------------

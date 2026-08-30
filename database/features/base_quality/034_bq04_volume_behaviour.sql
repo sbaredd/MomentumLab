@@ -2,15 +2,18 @@
 -- MomentumLab
 -- Feature     : BQ04 - Post-Low Volume Behaviour
 -- File        : 034_bq04_volume_behaviour.sql
--- Version     : 1.0
+-- Version     : 2.0
 --
 -- Purpose:
 --   Calculate and persist raw BQ04 post-low volume-behaviour features
---   for the selected base episode.
+--   for the selected Base Episode universe.
 --
--- V1 Test Scope:
---   Uses four previously validated base candidates.
---   trade_date = 2026-08-13
+-- Input:
+--   trn.stock_base_episode_daily
+--
+-- Production scope:
+--   NIFTY_100
+--   Selected trade date
 --
 -- IMPORTANT:
 --   - Raw features only
@@ -21,35 +24,34 @@
 
 WITH params AS
 (
-    SELECT DATE '2026-08-13' AS trade_date
+    SELECT
+        DATE '2026-08-13' AS trade_date,
+        'NIFTY_100'::varchar AS universe_code
 ),
 
-current_candidates
+current_candidates AS
 (
-    symbol,
-    prior_swing_high_date,
-    prior_swing_high,
-    base_low_date,
-    base_low
-) AS
-(
-    VALUES
-        ('5PAISA',     DATE '2026-07-27', 381.95::numeric,
-                       DATE '2026-07-30', 344.00::numeric),
-
-        ('CHENNPETRO', DATE '2026-07-23', 1354.00::numeric,
-                       DATE '2026-07-28', 1150.00::numeric),
-
-        ('DEEPINDS',   DATE '2026-07-20', 487.00::numeric,
-                       DATE '2026-07-24', 453.60::numeric),
-
-        ('KTKBANK',    DATE '2026-07-15', 280.00::numeric,
-                       DATE '2026-07-17', 268.35::numeric)
+    SELECT
+        b.security_id,
+        s.symbol,
+        b.prior_swing_high_date,
+        b.prior_swing_high,
+        b.base_low_date,
+        b.base_low
+    FROM trn.stock_base_episode_daily b
+    JOIN ref.ref_nse_equity_security s
+      ON s.security_id = b.security_id
+    JOIN ref.security_universe_membership um
+      ON um.security_id = b.security_id
+    CROSS JOIN params p
+    WHERE b.trade_date = p.trade_date
+      AND um.universe_code = p.universe_code
 ),
 
 post_low_with_anchor AS
 (
     SELECT
+        c.security_id,
         c.symbol,
         c.base_low_date,
 
@@ -59,14 +61,12 @@ post_low_with_anchor AS
 
         LAG(b.close_price) OVER
         (
-            PARTITION BY c.symbol
+            PARTITION BY c.security_id
             ORDER BY b.traded_date
         ) AS prev_close
 
     FROM current_candidates c
-
     CROSS JOIN params p
-
     JOIN trn.nse_sec_bhavdata b
       ON b.symbol = c.symbol
      AND b.series = 'EQ'
@@ -77,6 +77,7 @@ post_low_with_anchor AS
 classified AS
 (
     SELECT
+        security_id,
         symbol,
         base_low_date,
         traded_date,
@@ -90,14 +91,13 @@ classified AS
         END AS day_direction
 
     FROM post_low_with_anchor
-
     WHERE traded_date > base_low_date
 ),
 
 bq04 AS
 (
     SELECT
-        symbol,
+        security_id,
 
         COUNT(*) AS post_low_sessions,
 
@@ -157,30 +157,34 @@ bq04 AS
         ) AS up_vs_down_volume_ratio
 
     FROM classified
-
-    GROUP BY symbol
+    GROUP BY security_id
 ),
 
 resolved AS
 (
     SELECT
-        s.security_id,
+        q.security_id,
         p.trade_date,
-        q.*
+        q.post_low_sessions,
+        q.post_low_up_days,
+        q.post_low_down_days,
+        q.post_low_flat_days,
+        q.avg_up_volume,
+        q.avg_down_volume,
+        q.down_vs_up_volume_ratio,
+        q.up_vs_down_volume_ratio
 
     FROM bq04 q
-
-    JOIN ref.ref_nse_equity_security s
-      ON s.symbol = q.symbol
-
     CROSS JOIN params p
 
     WHERE q.post_low_sessions >= 6
 )
 
 UPDATE trn.stock_base_quality_daily t
-
 SET
+    post_low_sessions =
+        r.post_low_sessions,
+
     post_low_up_days =
         r.post_low_up_days,
 
@@ -205,4 +209,4 @@ SET
 FROM resolved r
 
 WHERE t.security_id = r.security_id
-  AND t.trade_date = r.trade_date;
+  AND t.trade_date  = r.trade_date;

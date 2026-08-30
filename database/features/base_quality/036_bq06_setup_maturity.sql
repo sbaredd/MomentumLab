@@ -2,7 +2,7 @@
 -- MomentumLab
 -- Feature     : BQ06 - Setup Maturity
 -- File        : 036_bq06_setup_maturity.sql
--- Version     : 1.0
+-- Version     : 2.0
 --
 -- Purpose:
 --   Measure how developed the base is as of trade_date.
@@ -11,10 +11,17 @@
 --   - base_age_sessions
 --   - base_maturity_ratio_pct
 --
--- No scoring thresholds in V1.
+-- Scope:
+--   NIFTY_100
+--   Selected evaluation date
 -- ============================================================================
 
-WITH candidates AS
+WITH params AS
+(
+    SELECT DATE '2026-08-13' AS evaluation_date
+),
+
+candidates AS
 (
     SELECT
         q.security_id,
@@ -28,9 +35,13 @@ WITH candidates AS
     JOIN ref.ref_nse_equity_security s
       ON s.security_id = q.security_id
 
-    WHERE q.trade_date = DATE '2026-08-13'
-      AND s.symbol IN
-          ('5PAISA', 'CHENNPETRO', 'DEEPINDS', 'KTKBANK')
+    JOIN ref.security_universe_membership um
+      ON um.security_id = q.security_id
+     AND um.universe_code = 'NIFTY_100'
+
+    CROSS JOIN params p
+
+    WHERE q.trade_date = p.evaluation_date
 ),
 
 maturity AS
@@ -85,5 +96,8 @@ SET
 
 FROM resolved r
 
+CROSS JOIN params p
+
 WHERE t.security_id = r.security_id
-  AND t.trade_date = r.trade_date;
+  AND t.trade_date  = r.trade_date
+  AND t.trade_date  = p.evaluation_date;

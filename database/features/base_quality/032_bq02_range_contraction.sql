@@ -2,15 +2,18 @@
 -- MomentumLab
 -- Feature     : BQ02 - Post-Low Range Contraction
 -- File        : 032_bq02_range_contraction.sql
--- Version     : 1.0
+-- Version     : 2.0
 --
 -- Purpose:
---   Calculate and persist raw BQ02 Base Tightness features for the
---   selected base episode.
+--   Calculate and persist raw BQ02 Range Contraction features
+--   for the selected Base Episode universe.
 --
--- V1 Test Scope:
---   Uses four previously validated base candidates.
---   trade_date = 2026-08-13
+-- Input:
+--   trn.stock_base_episode_daily
+--
+-- Production scope:
+--   NIFTY_100
+--   Selected trade date
 --
 -- IMPORTANT:
 --   - Raw features only
@@ -20,35 +23,39 @@
 
 WITH params AS
 (
-    SELECT DATE '2026-08-13' AS trade_date
+    SELECT
+        DATE '2026-08-13' AS trade_date,
+        'NIFTY_100'::varchar AS universe_code
 ),
 
-current_candidates
+current_candidates AS
 (
-    symbol,
-    prior_swing_high_date,
-    prior_swing_high,
-    base_low_date,
-    base_low
-) AS
-(
-    VALUES
-        ('5PAISA',     DATE '2026-07-27', 381.95::numeric,
-                       DATE '2026-07-30', 344.00::numeric),
+    SELECT
+        b.security_id,
+        s.symbol,
+        b.prior_swing_high_date,
+        b.prior_swing_high,
+        b.base_low_date,
+        b.base_low
 
-        ('CHENNPETRO', DATE '2026-07-23', 1354.00::numeric,
-                       DATE '2026-07-28', 1150.00::numeric),
+    FROM trn.stock_base_episode_daily b
 
-        ('DEEPINDS',   DATE '2026-07-20', 487.00::numeric,
-                       DATE '2026-07-24', 453.60::numeric),
+    JOIN ref.ref_nse_equity_security s
+      ON s.security_id = b.security_id
 
-        ('KTKBANK',    DATE '2026-07-15', 280.00::numeric,
-                       DATE '2026-07-17', 268.35::numeric)
+    JOIN ref.security_universe_membership um
+      ON um.security_id = b.security_id
+
+    CROSS JOIN params p
+
+    WHERE b.trade_date = p.trade_date
+      AND um.universe_code = p.universe_code
 ),
 
 post_low_data AS
 (
     SELECT
+        c.security_id,
         c.symbol,
         c.base_low_date,
 
@@ -65,13 +72,13 @@ post_low_data AS
 
         ROW_NUMBER() OVER
         (
-            PARTITION BY c.symbol
+            PARTITION BY c.security_id
             ORDER BY b.traded_date
         ) AS session_no,
 
         COUNT(*) OVER
         (
-            PARTITION BY c.symbol
+            PARTITION BY c.security_id
         ) AS total_sessions
 
     FROM current_candidates c
@@ -88,7 +95,7 @@ post_low_data AS
 bq02 AS
 (
     SELECT
-        symbol,
+        security_id,
 
         COUNT(*) AS post_low_sessions,
 
@@ -132,20 +139,21 @@ bq02 AS
 
     FROM post_low_data
 
-    GROUP BY symbol
+    GROUP BY security_id
 ),
 
 resolved AS
 (
     SELECT
-        s.security_id,
+        q.security_id,
         p.trade_date,
-        q.*
+
+        q.post_low_sessions,
+        q.early_3_avg_range_pct,
+        q.recent_3_avg_range_pct,
+        q.range_contraction_pct
 
     FROM bq02 q
-
-    JOIN ref.ref_nse_equity_security s
-      ON s.symbol = q.symbol
 
     CROSS JOIN params p
 
@@ -170,4 +178,4 @@ SET
 FROM resolved r
 
 WHERE t.security_id = r.security_id
-  AND t.trade_date = r.trade_date;
+  AND t.trade_date  = r.trade_date;
