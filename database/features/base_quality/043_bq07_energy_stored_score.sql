@@ -2,102 +2,72 @@
 -- MomentumLab
 -- Feature : BQ07 - Energy Stored Score
 -- File    : 043_bq07_energy_stored_score.sql
+-- Version : 2.0
 --
--- Purpose:
---   Measure whether the right side of the base shows simultaneous:
---     1. Price tightness
---     2. Range contraction
---     3. Volume dry-up
---
--- Inputs:
---   recent_5_price_tightness_pct
---   range_contraction_pct
---   volume_dryup_pct
---
--- Component Points:
---
--- Price Tightness (0-4)
---   <= 5%   -> 4
---   <= 8%   -> 3
---   <= 12%  -> 2
---   <= 16%  -> 1
---   > 16%   -> 0
---
--- Range Contraction (0-3)
---   >= 30%  -> 3
---   >= 15%  -> 2
---   > 0%    -> 1
---   <= 0%   -> 0
---
--- Volume Dry-up (0-3)
---   >= 40%  -> 3
---   >= 20%  -> 2
---   > 0%    -> 1
---   <= 0%   -> 0
---
--- Confluence / Gating:
---   Energy Stored requires BOTH:
---      range_contraction_pct > 0
---      volume_dryup_pct > 0
---
---   If either condition is absent, score is capped at 4.
+-- Production scope:
+--   NIFTY_100
+--   Selected trade date
 --
 -- Maximum Score: 10
 -- ============================================================================
-
 
 ALTER TABLE trn.stock_base_quality_daily
 ADD COLUMN IF NOT EXISTS energy_stored_score INTEGER;
 
 
-WITH components AS
+WITH params AS
 (
     SELECT
-        security_id,
-        trade_date,
+        DATE '2026-08-13' AS evaluation_date
+),
 
-        recent_5_price_tightness_pct,
-        range_contraction_pct,
-        volume_dryup_pct,
+components AS
+(
+    SELECT
+        q.security_id,
+        q.trade_date,
 
-        -- ------------------------------------------------------------
-        -- 1. Price Tightness: 0-4
-        -- Lower is better
-        -- ------------------------------------------------------------
+        q.recent_5_price_tightness_pct,
+        q.range_contraction_pct,
+        q.volume_dryup_pct,
+
+        -- Price Tightness: 0-4
         CASE
-            WHEN recent_5_price_tightness_pct IS NULL THEN NULL
-            WHEN recent_5_price_tightness_pct <= 5  THEN 4
-            WHEN recent_5_price_tightness_pct <= 8  THEN 3
-            WHEN recent_5_price_tightness_pct <= 12 THEN 2
-            WHEN recent_5_price_tightness_pct <= 16 THEN 1
+            WHEN q.recent_5_price_tightness_pct IS NULL THEN NULL
+            WHEN q.recent_5_price_tightness_pct <= 5  THEN 4
+            WHEN q.recent_5_price_tightness_pct <= 8  THEN 3
+            WHEN q.recent_5_price_tightness_pct <= 12 THEN 2
+            WHEN q.recent_5_price_tightness_pct <= 16 THEN 1
             ELSE 0
         END AS tightness_points,
 
-        -- ------------------------------------------------------------
-        -- 2. Range Contraction: 0-3
-        -- Higher positive contraction is better
-        -- ------------------------------------------------------------
+        -- Range Contraction: 0-3
         CASE
-            WHEN range_contraction_pct IS NULL THEN NULL
-            WHEN range_contraction_pct >= 30 THEN 3
-            WHEN range_contraction_pct >= 15 THEN 2
-            WHEN range_contraction_pct > 0   THEN 1
+            WHEN q.range_contraction_pct IS NULL THEN NULL
+            WHEN q.range_contraction_pct >= 30 THEN 3
+            WHEN q.range_contraction_pct >= 15 THEN 2
+            WHEN q.range_contraction_pct > 0   THEN 1
             ELSE 0
         END AS contraction_points,
 
-        -- ------------------------------------------------------------
-        -- 3. Volume Dry-up: 0-3
-        -- Higher positive dry-up is better
-        -- ------------------------------------------------------------
+        -- Volume Dry-up: 0-3
         CASE
-            WHEN volume_dryup_pct IS NULL THEN NULL
-            WHEN volume_dryup_pct >= 40 THEN 3
-            WHEN volume_dryup_pct >= 20 THEN 2
-            WHEN volume_dryup_pct > 0   THEN 1
+            WHEN q.volume_dryup_pct IS NULL THEN NULL
+            WHEN q.volume_dryup_pct >= 40 THEN 3
+            WHEN q.volume_dryup_pct >= 20 THEN 2
+            WHEN q.volume_dryup_pct > 0   THEN 1
             ELSE 0
         END AS dryup_points
 
-    FROM trn.stock_base_quality_daily
+    FROM trn.stock_base_quality_daily q
+
+    JOIN ref.security_universe_membership um
+      ON um.security_id = q.security_id
+     AND um.universe_code = 'NIFTY_100'
+
+    CROSS JOIN params p
+
+    WHERE q.trade_date = p.evaluation_date
 ),
 
 raw_scores AS
@@ -106,13 +76,8 @@ raw_scores AS
         security_id,
         trade_date,
 
-        recent_5_price_tightness_pct,
         range_contraction_pct,
         volume_dryup_pct,
-
-        tightness_points,
-        contraction_points,
-        dryup_points,
 
         tightness_points
         + contraction_points
@@ -132,19 +97,11 @@ scored AS
         trade_date,
 
         CASE
-
-            -- --------------------------------------------------------
-            -- Confluence gate
-            --
-            -- A setup cannot receive a high Energy Stored score when
-            -- either range contraction or volume dry-up is absent.
-            -- --------------------------------------------------------
             WHEN range_contraction_pct <= 0
               OR volume_dryup_pct <= 0
             THEN LEAST(raw_energy_score, 4)
 
             ELSE raw_energy_score
-
         END AS energy_stored_score
 
     FROM raw_scores
@@ -157,5 +114,8 @@ SET energy_stored_score =
 
 FROM scored s
 
+CROSS JOIN params p
+
 WHERE q.security_id = s.security_id
-  AND q.trade_date  = s.trade_date;
+  AND q.trade_date  = s.trade_date
+  AND q.trade_date  = p.evaluation_date;
