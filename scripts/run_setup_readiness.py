@@ -212,6 +212,10 @@ def run_setup_readiness(
 # VALIDATION
 # ============================================================================
 
+# ============================================================================
+# VALIDATION
+# ============================================================================
+
 def validate_result(
     connection,
     evaluation_date,
@@ -277,8 +281,51 @@ def validate_result(
 
         result = cursor.fetchone()
 
-    return result
+    (
+        total_rows,
+        sr01_rows,
+        sr02_rows,
+        sr03_rows,
+        sr04_rows,
+        sr05_rows,
+        sr06_rows,
+        sr07_rows,
+        sr08_rows,
+    ) = result
 
+    # ------------------------------------------------------------------------
+    # Fail-fast validation
+    #
+    # SR02 is intentionally excluded from equality validation because
+    # pivot_proximity_pct is legitimately NULL when no active pivot exists.
+    # ------------------------------------------------------------------------
+
+    if total_rows == 0:
+
+        raise RuntimeError(
+            f"No Setup Readiness rows produced for {evaluation_date}"
+        )
+
+    required_features = {
+        "SR01 breakout state": sr01_rows,
+        "SR03 relative volume": sr03_rows,
+        "SR04 ATR": sr04_rows,
+        "SR05 tightness": sr05_rows,
+        "SR06 volume dry-up": sr06_rows,
+        "SR07 progression": sr07_rows,
+        "SR08 structural risk": sr08_rows,
+    }
+
+    for feature_name, populated_rows in required_features.items():
+
+        if populated_rows != total_rows:
+
+            raise RuntimeError(
+                f"{feature_name} validation failed for {evaluation_date}: "
+                f"{populated_rows}/{total_rows} rows populated"
+            )
+
+    return result
 
 # ============================================================================
 # MAIN
