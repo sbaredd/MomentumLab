@@ -16,7 +16,7 @@
 
 WITH params AS
 (
-    SELECT DATE '2026-08-13' AS evaluation_date
+    SELECT CAST(:evaluation_date AS DATE) AS evaluation_date
 ),
 
 source_data AS

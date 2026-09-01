@@ -14,7 +14,7 @@
 WITH params AS
 (
     SELECT
-        DATE '2026-08-13' AS trade_date
+        CAST(:evaluation_date AS DATE) AS trade_date
 ),
 
 -- ============================================================================
