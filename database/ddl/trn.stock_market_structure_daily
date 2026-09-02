@@ -1,0 +1,64 @@
+-- ============================================================================
+-- Momentum Lab
+-- Table       : trn.stock_market_structure_daily
+-- Purpose     : Backtest-safe daily HH/HL market structure
+-- ============================================================================
+
+CREATE TABLE IF NOT EXISTS trn.stock_market_structure_daily
+(
+    trade_date              DATE NOT NULL,
+    symbol                  VARCHAR(50) NOT NULL,
+
+    -- Latest two confirmed swing highs
+    previous_swing_high     NUMERIC(18,6),
+    previous_swing_high_date DATE,
+
+    latest_swing_high       NUMERIC(18,6),
+    latest_swing_high_date  DATE,
+
+    -- HH / LH / EQ
+    high_structure          VARCHAR(2),
+
+    -- Latest two confirmed swing lows
+    previous_swing_low      NUMERIC(18,6),
+    previous_swing_low_date DATE,
+
+    latest_swing_low        NUMERIC(18,6),
+    latest_swing_low_date   DATE,
+
+    -- HL / LL / EQ
+    low_structure           VARCHAR(2),
+
+    -- UPTREND / DOWNTREND / EXPANDING /
+    -- CONTRACTING / NEUTRAL
+    market_structure        VARCHAR(20),
+
+    calculated_date         TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    CONSTRAINT pk_stock_market_structure_daily
+        PRIMARY KEY (trade_date, symbol),
+
+    CONSTRAINT chk_high_structure
+        CHECK (
+            high_structure IS NULL
+            OR high_structure IN ('HH', 'LH', 'EQ')
+        ),
+
+    CONSTRAINT chk_low_structure
+        CHECK (
+            low_structure IS NULL
+            OR low_structure IN ('HL', 'LL', 'EQ')
+        ),
+
+    CONSTRAINT chk_market_structure
+        CHECK (
+            market_structure IS NULL
+            OR market_structure IN (
+                'UPTREND',
+                'DOWNTREND',
+                'EXPANDING',
+                'CONTRACTING',
+                'NEUTRAL'
+            )
+        )
+);

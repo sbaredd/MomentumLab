@@ -1,0 +1,84 @@
+CREATE TABLE trn.stock_setup_episode
+(
+    setup_episode_id       BIGSERIAL PRIMARY KEY,
+
+    -- Security
+    security_id            BIGINT NOT NULL,
+
+    -- Structural pivot
+    pivot_date             DATE NOT NULL,
+    pivot_price            NUMERIC(18,4) NOT NULL,
+
+    -- Episode boundary
+    episode_start_date     DATE NOT NULL,
+    episode_end_date       DATE NOT NULL,
+
+    -- Pivot classification
+    initial_pivot_type     VARCHAR(50),
+    final_pivot_type       VARCHAR(50),
+
+    -- Episode statistics
+    observation_count      INTEGER NOT NULL,
+
+    start_proximity_pct    NUMERIC(10,4),
+    min_proximity_pct      NUMERIC(10,4),
+    max_proximity_pct      NUMERIC(10,4),
+    end_proximity_pct      NUMERIC(10,4),
+
+    -- Lifecycle
+    episode_status         VARCHAR(30) NOT NULL,
+
+    -- Breakout information
+    breakout_date          DATE,
+    terminal_breakout_state VARCHAR(50),
+
+    -- Audit
+    created_date           TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_date           TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    CONSTRAINT uq_stock_setup_episode
+        UNIQUE
+        (
+            security_id,
+            pivot_date,
+            pivot_price,
+            episode_start_date
+        ),
+
+    CONSTRAINT chk_setup_episode_dates
+        CHECK (episode_end_date >= episode_start_date),
+
+    CONSTRAINT chk_setup_episode_status
+        CHECK
+        (
+            episode_status IN
+            (
+                'ACTIVE',
+                'SUPERSEDED',
+                'EXPIRED',
+                'RESOLVED_BREAKOUT'
+            )
+        ),
+
+    CONSTRAINT chk_setup_episode_observation_count
+        CHECK (observation_count > 0)
+);
+
+
+ALTER TABLE trn.stock_setup_episode
+    ALTER COLUMN episode_end_date DROP NOT NULL;
+
+
+    ALTER TABLE trn.stock_setup_episode
+    DROP CONSTRAINT chk_setup_episode_dates;
+
+ALTER TABLE trn.stock_setup_episode
+    ADD CONSTRAINT chk_setup_episode_dates
+    CHECK
+    (
+        (episode_status = 'ACTIVE' AND episode_end_date IS NULL)
+        OR
+        (episode_status <> 'ACTIVE'
+         AND episode_end_date IS NOT NULL
+         AND episode_end_date >= episode_start_date)
+    );

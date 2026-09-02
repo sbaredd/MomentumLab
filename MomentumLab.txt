@@ -1,0 +1,598 @@
+//***** 2026-08-19 *****//
+
+
+SELECT
+    table_schema,
+    table_name
+FROM information_schema.tables
+WHERE table_schema IN ('ref', 'trn')
+  AND table_name ILIKE '%sector%'
+ORDER BY table_schema, table_name;
+
+
+// *** Check the Ordinal Position ***//
+SELECT
+    ordinal_position,
+    column_name,
+    data_type
+FROM information_schema.columns
+WHERE table_schema = 'trn'
+  AND table_name = 'nse_sector_index_daily'
+ORDER BY ordinal_position;
+
+SELECT *
+FROM ref.ref_sector_index
+ORDER BY index_id;
+
+-- ============================================================
+-- MOMENTUMLAB
+-- FINAL SECTOR INDEX DATA VALIDATION
+-- ============================================================
+
+-- 1. Coverage by index
+SELECT
+    r.index_id,
+    r.index_code,
+    r.index_name,
+    COUNT(d.traded_date) AS row_count,
+    MIN(d.traded_date) AS first_date,
+    MAX(d.traded_date) AS last_date,
+    COUNT(d.close_price) AS close_count,
+    COUNT(d.open_price) AS open_count,
+    COUNT(d.high_price) AS high_count,
+    COUNT(d.low_price) AS low_count
+FROM ref.ref_sector_index r
+LEFT JOIN trn.nse_sector_index_daily d
+       ON d.index_id = r.index_id
+GROUP BY
+    r.index_id,
+    r.index_code,
+    r.index_name
+ORDER BY r.index_id;
+
+
+-- 2. Indices having NO historical data
+-- Expected: ideally 0 rows
+SELECT
+    r.index_id,
+    r.index_code,
+    r.index_name
+FROM ref.ref_sector_index r
+LEFT JOIN trn.nse_sector_index_daily d
+       ON d.index_id = r.index_id
+WHERE d.index_id IS NULL
+ORDER BY r.index_id;
+
+
+-- 3. Duplicate index/date records
+-- Expected: 0 rows
+SELECT
+    index_id,
+    traded_date,
+    COUNT(*) AS cnt
+FROM trn.nse_sector_index_daily
+GROUP BY index_id, traded_date
+HAVING COUNT(*) > 1
+ORDER BY index_id, traded_date;
+
+
+-- 4. Missing closing values
+-- Expected: 0 rows
+SELECT
+    index_id,
+    traded_date
+FROM trn.nse_sector_index_daily
+WHERE close_price IS NULL
+ORDER BY index_id, traded_date;
+
+
+-- 5. OHLC integrity where OHLC exists
+-- Expected: 0 rows
+SELECT *
+FROM trn.nse_sector_index_daily
+WHERE open_price IS NOT NULL
+  AND high_price IS NOT NULL
+  AND low_price IS NOT NULL
+  AND close_price IS NOT NULL
+  AND (
+       high_price < low_price
+    OR high_price < open_price
+    OR high_price < close_price
+    OR low_price  > open_price
+    OR low_price  > close_price
+  )
+ORDER BY index_id, traded_date;
+
+
+-- 6. Total loaded data
+SELECT
+    COUNT(*) AS total_rows,
+    COUNT(DISTINCT index_id) AS indices_loaded,
+    MIN(traded_date) AS earliest_date,
+    MAX(traded_date) AS latest_date
+FROM trn.nse_sector_index_daily;
+
+
+___________________________________________
+
+Good. Next we start Setup / Pivot Detection.
+
+Before writing SQL, we should define the feature precisely, just as we did with Base Episode and Base Quality. The first question is:
+
+What exactly should MomentumLab call a Pivot?
+
+For our momentum framework, I suggest we initially define the pivot structurally as the price level that must be exceeded to demonstrate that the stock is leaving its base—not yet as a buy signal.
+
+Then later we can separately evaluate breakout quality: volume expansion, close location, extension from pivot, market/sector conditions, etc.
+
+So our next sequence should be:
+
+Base Episode → Base Quality → Pivot Identification → Breakout/Setup Readiness → Trade Candidate
+
+Let's start with Pivot Identification, without adding scoring yet.
+
+For MomentumLab V1, I propose:
+
+Pivot = the highest meaningful price level formed on the right side of the current base that price must overcome to demonstrate a breakout from that base.
+
+The important point is that the prior swing high is not automatically the pivot. A stock can correct from ₹1,000, form a base, recover, and then develop a tighter resistance area around ₹940. That ₹940 level may become the actionable pivot even though the original swing high was ₹1,000.
+
+So our first Pivot module should identify structure only. It should answer: Where is resistance? When was it formed? How far is current price from it? Has it already been crossed?
+
+I would initially capture fields such as pivot_date, pivot_price, pivot_type, distance_to_pivot_pct, and pivot_broken. We should not yet mix in volume, market regime, sector strength, or Base Quality score. Those belong to breakout/setup qualification.
+
+The first design problem, therefore, is the interesting one:
+
+How should the algorithm discover that ₹940 is the meaningful pivot rather than simply using the ₹1,000 prior swing high?
+
+That is what I suggest we solve next.
+
+
+
+Prior Swing High
+₹1,000
+   │
+   │\
+   │ \
+   │  \
+   │   \              ₹940  ← candidate pivot
+   │    \            /───\
+   │     \          /     \
+   │      \        /       \__
+   │       \______/           \__
+   │
+   └──── Base Low ₹800
+   
+   After the ₹800 base low, price starts its right-side recovery. During that recovery it may encounter one or more local highs:
+   
+   ₹1,000   Prior swing high
+   |
+₹960                         ●
+   |                        / \
+₹940               ●───────    ← possible pivot
+   |              / \
+₹920        ●────
+   |       / \
+₹900 _____/
+   |
+₹800 ● Base low
+
+We should not simply choose the highest post-low price. That could make the pivot move continuously as price rises.
+
+Instead, V1 should look for a confirmed post-base-low swing high:
+
+A local high formed after the base low, followed by enough price action to confirm that sellers actually responded there.
+
+That gives us a genuine resistance reference.
+
+There is another important distinction. We can have two pivot types:
+
+BASE_HIGH — the original prior_swing_high, say ₹1,000.
+
+RIGHT_SIDE_PIVOT — a confirmed resistance level created during recovery, say ₹940.
+
+If a valid right-side pivot exists, it can become the actionable pivot. If one doesn't exist yet, the prior base high remains the structural resistance.
+
+This fits our existing architecture nicely because we already calculate confirmed swing highs with anti-lookahead logic. We should reuse that market-structure information rather than inventing another unrelated swing-high algorithm.
+
+Proposed Pivot V1
+
+For each current Base Episode:
+
+1. Get base_low_date
+        ↓
+2. Find confirmed swing highs AFTER base_low_date
+        ↓
+3. Keep only swing highs known by evaluation_date
+        ↓
+4. Identify the relevant right-side swing high
+        ↓
+5. Compare it with prior_swing_high
+        ↓
+6. Resolve actionable pivot
+
+But there is one design decision we should settle before SQL:
+
+If there are multiple confirmed right-side swing highs — ₹900, ₹925, ₹940 — which one should become the pivot?
+
+I would not automatically choose the latest or highest. We need a rule that reflects the actual resistance structure. That is the next thing we should define.
+
+Good. For multiple right-side swing highs, I suggest we use a structural rule, not simply “latest” or “highest.”
+
+Prior High ₹1,000
+       │
+       │
+₹960   │                         ● C
+       │                       /   \
+₹940   │              ● B ───
+       │            /   \
+₹920   │      ● A
+       │     / \
+       │    /
+₹800   ●───
+       Base Low
+	   
+	   
+A = ₹920, B = ₹940, C = ₹960.
+
+If price keeps making progressively higher swing highs, A and B have effectively been overcome. They should not remain the actionable pivot. C is the current resistance frontier.
+
+But suppose instead:
+
+₹1,000   Prior High
+   │
+₹960
+   │
+₹940             ● A
+   │            / \
+₹920           /   \       ● B
+   │          /     \     / \
+₹900         /       \___/
+   │
+₹800 ●──────
+
+A = ₹940 and B = ₹920.
+
+Here I would not call ₹920 the pivot merely because it is newer. The market has failed to regain the earlier ₹940 resistance. ₹940 remains the more important structural barrier.
+
+So V1 can use this rule:
+
+The actionable right-side pivot is the highest confirmed post-base-low swing high that has not subsequently been decisively exceeded.
+
+This gives us a useful concept: unresolved resistance.
+
+Once price trades above a candidate swing high, that level is no longer the current breakout pivot; we move forward through the structure. But we also shouldn't let every tiny local high become a pivot.
+
+There is one more complication we should resolve before SQL: what does “exceeded” mean?
+
+I recommend keeping Pivot Identification purely structural:
+
+High > pivot_price = pivot crossed.
+
+Don't require a close above it or volume confirmation here. Those are separate questions:
+
+Pivot module: Did price cross resistance?
+Breakout-quality module: Did it close above resistance convincingly?
+Volume module: Was participation sufficient?
+
+That maintains the separation-of-concerns principle we've been using throughout MomentumLab.
+
+So our V1 definition becomes:
+
+Pivot = highest unresolved confirmed swing high formed after the current base low; if no such right-side pivot exists, fall back to the prior swing high.
+
+Now we have enough definition to design the Pivot table and fields before writing the calculation SQL.
+
+Good. Let's define the Pivot data model first.
+
+I recommend a new daily table rather than adding pivot fields to stock_base_quality_daily, because Base Quality answers “Is this a good base?”, while Pivot answers “Where is the actionable resistance?”
+
+Proposed table
+trn.stock_pivot_daily
+
+For V1, I would keep these fields:
+
+security_id              BIGINT
+trade_date               DATE
+
+-- Base episode reference
+base_low_date            DATE
+prior_swing_high_date    DATE
+prior_swing_high         NUMERIC
+
+-- Right-side pivot
+right_side_pivot_date    DATE
+right_side_pivot_price   NUMERIC
+
+-- Resolved actionable pivot
+pivot_date               DATE
+pivot_price              NUMERIC
+pivot_type               VARCHAR(30)
+
+-- Position relative to pivot
+close_price              NUMERIC
+distance_to_pivot_pct    NUMERIC
+
+-- Structural state
+pivot_crossed            BOOLEAN
+pivot_crossed_date       DATE
+
+pivot_type initially needs only:
+
+RIGHT_SIDE_PIVOT
+PRIOR_SWING_HIGH
+
+The resolution rule would be:
+
+Valid unresolved confirmed right-side swing high exists?
+                  │
+          ┌───────┴────────┐
+         YES               NO
+          │                 │
+RIGHT_SIDE_PIVOT      PRIOR_SWING_HIGH
+          │                 │
+          └───────┬─────────┘
+                  ↓
+             pivot_price
+
+And:
+
+$$ DistanceToPivot\% = \frac{PivotPrice-Close}{PivotPrice}\times100 $$
+
+So, for example, pivot ₹940 and close ₹920 gives:
+
+$$ (940-920)/940 = 2.13\% $$
+
+A positive value means price is below the pivot; zero means at the pivot; negative means price is above it.
+
+One thing I would not store yet is pivot_score. We haven't established that a pivot itself needs scoring. First identify the level correctly; later the setup-readiness/breakout layer can judge whether trading around that pivot is attractive.
+
+One correction before we implement
+
+Our phrase “highest unresolved confirmed swing high” needs care. If we define “unresolved” as “never subsequently traded above,” then once today's price crosses the pivot, that candidate disappears precisely when we need it to determine pivot_crossed.
+
+So the algorithm should resolve the pivot using information prior to the evaluation session, and then evaluate today's price against that frozen level.
+
+Conceptually:
+
+History through T-1
+      ↓
+Determine today's actionable pivot
+      ↓
+Freeze pivot
+      ↓
+Observe session T
+      ↓
+Did T cross the pivot?
+
+That also gives us clean anti-lookahead behaviour for backtesting.
+
+Next I suggest we create only the table DDL first—probably 044_stock_pivot_daily.sql—and inspect it before creating the pivot-detection SQL.
+
+Confirmed. The table was created successfully.
+
+One correction to my previous message: I said we should see 16 columns, but the DDL actually defines 15 columns. Your screenshot correctly shows all 15, including created_date.
+
+So trn.stock_pivot_daily V1 DDL is complete.
+
+Next we should build the calculation SQL that identifies the right-side pivot from the confirmed swing-high structure, using our NIFTY 100 universe and the single params evaluation date.
+
+We'll do that carefully and validate the pivot selection on a few stocks before populating all 100.
+
+Now we can build SR06 — Pivot Volume Dry-Up.
+
+One important design detail before the SQL: the 20-day reference should also be calculated using data before the evaluation date. We should not use relative_volume_20, because that belongs to the breakout/evaluation session and would introduce the same contamination problem we just corrected in SR05.
+
+Next: 052_sr06_pivot_volume_dryup.sql
+
+The measurement window will be:
+
+                 PRE-BREAKOUT
+        ┌─────────────────────────┐
+        D-20 ................ D-1 │ D
+                              ↑     ↑
+                         recent 5  evaluation/
+                                   breakout day
+                                   EXCLUDED
+
+SR06 will calculate:
+
+recent_5_avg_volume
+
+recent_5_volume_vs_20d_pct
+    = recent 5-session average volume
+      -------------------------------- × 100
+      prior 20-session average volume
+
+For SOLARINDS, for example, both the numerator and denominator will stop at 2026-08-12.
+
+I'll give you the complete production SQL next, retaining our params + NIFTY_100 pattern and updating all 100 readiness rows.
+
+
+Let's define SR07 — Pivot Overhead Supply / Prior Resistance Pressure.
+
+This adds something genuinely different from SR05 and SR06.
+
+The question is:
+
+How much recent price resistance exists immediately around or above the selected pivot?
+
+But on reflection, our pivot itself already comes from structural resistance. Measuring nearby highs again risks duplicating the Pivot layer.
+
+A more useful SR07 for readiness is:
+
+SR07 — Pre-Breakout Price Progression
+
+SR05 tells us how tight the stock is. SR06 tells us whether volume is drying up. SR07 should tell us:
+
+During that tight pre-breakout period, is price actually pressing toward the pivot rather than drifting away from it?
+
+For example, two stocks can both have a 2% five-day range:
+
+Stock A                     Stock B
+
+        Pivot                       Pivot
+──────────────               ──────────────
+        ╭─╮
+     ╭──╯ │
+   ╭─╯    │                   ╭╮
+ ╭─╯      │                  ╭╯╰╮
+╯         │                 ╭╯  ╰──╮
+          ↑                        ╰───
+
+Pressing upward              Drifting downward
+toward pivot                 away from pivot
+
+SR05 alone considers both "tight." SR07 distinguishes their direction.
+
+I propose two raw measurements over the same five completed sessions before evaluation date:
+
+prebreakout_5d_return_pct
+prebreakout_close_position_pct
+
+The first is:
+
+$$ \frac{Close_{D-1}-Close_{D-5}}{Close_{D-5}}\times100 $$
+
+The second measures where the D−1 close sits inside the five-session high-low envelope:
+
+$$ \frac{Close_{D-1}-Low_{5}} {High_{5}-Low_{5}}\times100 $$
+
+Interpretation:
+
+close position near 100% → finishing near the top of the pre-breakout range
+near 50% → middle
+near 0% → bottom
+positive 5-day return → price progressing upward
+negative return → price retreating
+
+Again, these are raw observations, not scores. We won't say >80 = good or >3% = good until we have historical evidence.
+
+Add two columns
+
+Run:
+
+ALTER TABLE trn.stock_setup_readiness_daily
+    ADD COLUMN IF NOT EXISTS prebreakout_5d_return_pct NUMERIC,
+    ADD COLUMN IF NOT EXISTS prebreakout_close_position_pct NUMERIC;
+
+Then verify the schema as before. We should go from 20 → 22 columns.
+
+Once you show me that, I'll give you the complete 053_sr07_prebreakout_price_progression.sql.
+
+Let's define the Setup Readiness Classification decision tree before writing SQL.
+
+I suggest we keep it explainable and separate setup quality from today's breakout event.
+
+Proposed lifecycle
+NO_PIVOT
+   │
+   ▼
+FORMING
+   │
+   ▼
+APPROACHING_PIVOT
+   │
+   ▼
+READY
+   │
+   ├──────────────► BREAKING_OUT
+   │
+   │
+   └──────────────► EXTENDED
+
+The important part is how we define each state.
+
+State	Meaning	Primary evidence
+NO_PIVOT	No actionable structural resistance exists	pivot_price IS NULL
+FORMING	Valid pivot exists, but stock isn't sufficiently close/organized yet	SR01–SR02
+APPROACHING_PIVOT	Price has moved close to pivot	SR02
+READY	Close to pivot and pre-breakout structure shows compression/dry-up/pressure with manageable structural risk	SR05–SR08
+BREAKING_OUT	Evaluation-day price crosses the pivot with confirmation evidence	SR01 + SR03
+EXTENDED	Price has moved too far beyond the pivot to represent an efficient fresh entry	SR04
+
+But now comes the part where we should not guess.
+
+For example, READY will eventually require rules resembling:
+
+pivot proximity       <= ?
+5-day range           <= ?
+5-day close tightness <= ?
+5d volume / 20d       <= ?
+close position        >= ?
+structural risk       <= ?
+
+We deliberately kept SR05–SR08 raw so that these numbers wouldn't become arbitrary constants hidden inside feature calculations.
+
+Therefore I recommend not writing 055 yet.
+
+Our next step should be a distribution-analysis SQL for the 81 stocks with actionable pivots, showing SR02 + SR05–SR08 together. From that we can examine percentiles (P10/P25/P50/P75/P90), and—more importantly—compare the measurements against subsequent breakout outcomes.
+
+That gives us an empirical basis for deciding what READY actually means rather than declaring, for example, "5% tightness is good" because it sounds reasonable.
+
+This is an important transition in MomentumLab: feature engineering is sufficiently mature; now we begin calibration.
+
+
+Where we are
+
+NSE Bhavcopy
+     │
+     ▼
+Daily OHLCV data ──────────────── ✓
+     │
+     ▼
+Daily Features                   ✓
+SMA / EMA / ATR / RVOL /
+returns / highs / lows etc.
+     │
+     ▼
+Market Structure                 ✓
+     │
+     ▼
+Base Episodes                    ✓
+     │
+     ▼
+Structural Pivot                 ✓
+     │
+     ▼
+Setup Readiness                  ✓
+     │
+     ├── SR01 Breakout State             ✓
+     ├── SR02 Pivot Proximity            ✓
+     ├── SR03 Breakout Volume            ✓
+     ├── SR04 Breakout Extension         ✓
+     ├── SR05 Pivot Tightness            ✓
+     ├── SR06 Pivot Volume Dry-up        ✓
+     ├── SR07 Pre-breakout Progression   ✓
+     └── SR08 Structural Entry Risk      ✓
+	 
+	 
+	 
+	 
+What remains
+
+FEATURE ENGINEERING
+        ✓
+        │
+        ▼
+CALIBRATION                 ← WE ARE HERE
+        │
+        ├── Understand population
+        ├── Understand distributions
+        ├── Remove/handle repeated pivot observations
+        ├── Define forward outcomes
+        ├── Compare feature values vs outcomes
+        ▼
+EMPIRICAL THRESHOLDS
+        │
+        ▼
+SETUP CLASSIFICATION
+        │
+        ▼
+SCORING / RANKING
+        │
+        ▼
+BACKTEST
+        │
+        ▼
+DAILY CANDIDATE LIST

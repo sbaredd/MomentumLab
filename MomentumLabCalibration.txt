@@ -1,0 +1,167 @@
+At your 10 hours/week, I'd make the first phase about 2 weeks.
+Phase 0 — UX + Figma
+Week 1 — Learn to think in UX
+The goal isn't to memorize design terminology. It's to learn how to answer:
+What should the user see, and what should happen next?
+We'll cover:
+User problems
+Who is the user?
+What are they trying to accomplish?
+What is frustrating about the current solution?
+User journeys
+Entry point
+Actions
+Decisions
+Success
+Failure
+Information architecture
+What belongs together?
+What belongs in navigation?
+What should be one screen vs multiple screens?
+Interaction design
+What happens when I tap?
+What happens when something fails?
+What feedback does the user get?
+UX states
+This one is particularly important for production apps:
+Normal
+  ↓
+Loading
+  ↓
+Success
+  ↓
+Empty
+  ↓
+Error
+  ↓
+Retry
+A beginner designs only the Success state.
+A production engineer thinks about all of them.
+Mobile-specific UX
+Touch targets
+Navigation
+Keyboard behavior
+Permissions
+Back navigation
+Network interruptions
+Accessibility
+Week 2 — Figma
+We'll use Figma as our design tool.
+You don't need to become a Figma expert.
+You need to be able to create:
+Wireframe → UI → Prototype
+First learn these Figma concepts
+Frames
+Auto Layout
+Components
+Variants
+Constraints
+Styles/variables
+Text
+Shapes
+Images
+Prototyping
+Components/library
+The two I'd prioritize heavily are:
+Auto Layout + Components
+Those will matter enormously once you start designing multiple screens.
+
+Our first exercise
+I don't want you to learn Figma by copying a YouTube instructor.
+We're going to design a real product.
+But let's keep the first product extremely small.
+Product exercise
+Imagine:
+You want to build an app that lets people save interesting places they want to visit.
+For example:
+Restaurant
+Cafe
+Park
+Museum
+Hotel
+etc.
+A user should be able to:
+Discover a place
+Save it
+View saved places
+Open a place
+Remove it from saved places
+That's enough.
+Your first UX task
+Before touching Figma, answer these five questions:
+1. Who is the user?
+2. What problem are we solving?
+3. What is the user's primary goal?
+4. What is the minimum set of actions they need?
+5. What does success look like?
+Don't worry about making the answers perfect.
+We're deliberately starting with product thinking, not visual design.
+Then we'll turn it into a flow
+Something like:
+                ┌──────────────┐
+                │    Home      │
+                └──────┬───────┘
+                       │
+                       ▼
+                ┌──────────────┐
+                │   Discover   │
+                └──────┬───────┘
+                       │
+                       ▼
+                ┌──────────────┐
+                │ Place Detail │
+                └──────┬───────┘
+                       │
+                    Save
+                       │
+                       ▼
+                ┌──────────────┐
+                │    Saved     │
+                └──────────────┘
+Then we'll turn that flow into wireframes in Figma.
+Then we'll turn the wireframes into actual UI.
+Then, eventually, we'll implement those exact screens in Flutter.
+That's important: the Figma work isn't a separate design exercise. It's the first step of building the application.
+Your first assignment
+For now, don't open Figma yet.
+Reply with your answers to these five questions for the “save interesting places” app:
+Who is the user?
+What problem are we solving?
+What is their primary goal?
+What are the minimum actions?
+What does success look like?
+I'll review your answers like a product/UX mentor, and then we'll move to user flows → Figma
+
+The bigger finding
+
+Our SR layer does not look like eight arbitrary indicators thrown together.
+
+We're beginning to see a plausible setup lifecycle:
+
+                    PREPARATION
+                        │
+                 Volume contracts
+                   SR06 ↓
+                        │
+                 Price approaches
+                   SR02 ↑
+                        │
+                 Price progresses
+                   SR07 ↑
+                        │
+                        ▼
+                ┌──────────────┐
+                │    PIVOT     │
+                └──────┬───────┘
+                       │
+              breakout attempt
+                       │
+             ┌─────────┴─────────┐
+             ▼                   ▼
+       INTRADAY CROSS       CLOSES ABOVE
+          SR03 0.89           SR03 1.37
+          SR08 3.94%          SR08 4.98%
+                                  │
+                                  ▼
+                         BREAKOUT CONFIRMED
+						 
