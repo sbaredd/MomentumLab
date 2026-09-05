@@ -55,14 +55,14 @@ def load_all_stock_data(connection):
             traded_date,
             symbol,
             prev_close,
-            open_price,
-            high_price,
-            low_price,
-            close_price,
+            adjusted_open_price  AS open_price,
+            adjusted_high_price  AS high_price,
+            adjusted_low_price   AS low_price,
+            adjusted_close_price AS close_price,
             traded_quantity,
             delivery_quantity,
             delivery_percent
-        FROM trn.nse_sec_bhavdata
+        FROM trn.vw_nse_sec_bhavdata_adjusted
         WHERE series = 'EQ'
         ORDER BY symbol, traded_date;
     """
@@ -75,7 +75,7 @@ def load_all_stock_data(connection):
     if df.empty:
 
         raise ValueError(
-            "No EQ data found in trn.nse_sec_bhavdata"
+            "No EQ data found in trn.vw_nse_sec_bhavdata_adjusted"
         )
 
     df["traded_date"] = pd.to_datetime(
@@ -816,14 +816,16 @@ def main():
             "Database               : Connected"
         )
 
-        # Load all raw EQ data
+        
+        # Load all corporate-action-adjusted EQ data
 
         df = load_all_stock_data(
             connection
         )
 
+        
         print(
-            f"Raw EQ rows loaded     : "
+            f"Adjusted EQ rows loaded: "
             f"{len(df):,}"
         )
 
