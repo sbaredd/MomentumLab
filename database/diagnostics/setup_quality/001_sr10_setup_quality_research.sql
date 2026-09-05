@@ -1,0 +1,183 @@
+-- ============================================================================
+-- SR10 SETUP QUALITY RESEARCH
+-- HYPOTHESIS H1: CONSTRUCTIVE PROGRESSION + VOLUME PARTICIPATION
+-- ============================================================================
+--
+-- Research outcome:
+--   Post-breakout Maximum Favorable Excursion (MFE)
+--   over the next 10 trading sessions.
+--
+-- Research strong-breakout label:
+--   MFE_10D >= 5%
+--
+-- Current mature sample:
+--   32 RESOLVED_BREAKOUT episodes
+--
+-- Additional unresolved validation population:
+--   19 RESOLVED_BREAKOUT episodes had not yet accumulated
+--   10 future trading sessions as of 2026-09-02.
+--
+-- --------------------------------------------------------------------------
+-- H1
+-- --------------------------------------------------------------------------
+--
+-- A setup exhibiting:
+--
+--   1. Positive pre-breakout price progression
+--        prebreakout_5d_return_pct > 0
+--
+--   AND
+--
+--   2. Adequate recent volume participation
+--        recent_5_volume_vs_20d_pct >= 90
+--
+-- near the breakout appears more likely to produce meaningful
+-- post-breakout expansion.
+--
+-- IMPORTANT:
+--
+--   The 90% volume boundary is PROVISIONAL.
+--
+--   It was investigated using the same 32-episode research sample and
+--   therefore must NOT yet be treated as a production threshold.
+--
+-- --------------------------------------------------------------------------
+-- SUPPORTING EVIDENCE
+-- --------------------------------------------------------------------------
+--
+-- Breakout-day Progression x Volume:
+--
+--   NEITHER:
+--       N = 4
+--       Strong rate = 0%
+--       Avg MFE = 1.75%
+--
+--   PROGRESSION_ONLY:
+--       N = 9
+--       Strong rate = 11.11%
+--       Avg MFE = 1.56%
+--
+--   VOLUME_ONLY:
+--       N = 2
+--       Strong rate = 0%
+--       Avg MFE = 1.94%
+--
+--   BOTH:
+--       N = 17
+--       Strong rate = 29.41%
+--       Avg MFE = 3.31%
+--       Median MFE = 2.65%
+--
+-- --------------------------------------------------------------------------
+-- RANGE / ATR CONTROL
+-- --------------------------------------------------------------------------
+--
+-- Progression + Volume continued to outperform OTHER within both
+-- volatility-normalized range regimes.
+--
+--   P+V / LOWER_RANGE_ATR:
+--       N = 5
+--       Strong rate = 40%
+--       Avg MFE = 4.02%
+--
+--   P+V / HIGHER_RANGE_ATR:
+--       N = 12
+--       Strong rate = 25%
+--       Avg MFE = 3.01%
+--
+-- Tightness alone was NOT sufficient to identify strong setups.
+--
+-- --------------------------------------------------------------------------
+-- EPISODE PERSISTENCE
+-- --------------------------------------------------------------------------
+--
+-- Raw constructive-persistence percentage must NOT be interpreted without
+-- considering episode observation count.
+--
+-- Example:
+--
+--       1 constructive day / 1 observation = 100%
+--       5 constructive days / 5 observations = 100%
+--
+-- These contain very different amounts of evidence.
+--
+-- No minimum episode-maturity requirement is currently supported.
+--
+-- --------------------------------------------------------------------------
+-- RECENCY
+-- --------------------------------------------------------------------------
+--
+-- Constructive behavior at breakout showed the clearest substantial
+-- relationship with subsequent expansion.
+--
+--   BOTH_LAST_2:
+--       N = 6
+--       Strong rate = 16.67%
+--       Avg MFE = 2.62%
+--       Median MFE = 1.81%
+--
+--   BREAKOUT_DAY_ONLY:
+--       N = 11
+--       Strong rate = 36.36%
+--       Avg MFE = 3.68%
+--       Median MFE = 3.41%
+--
+--   PRIOR_DAY_ONLY:
+--       N = 2
+--       Strong rate = 0%
+--       Avg MFE = 0.63%
+--
+--   EARLIER_ONLY:
+--       N = 3
+--       Strong rate = 33.33%
+--       Avg MFE = 3.02%
+--
+--   NONE_RECENT:
+--       N = 10
+--       Strong rate = 0%
+--       Avg MFE = 1.46%
+--       Median MFE = 1.01%
+--
+-- --------------------------------------------------------------------------
+-- ARCHITECTURAL CONCLUSIONS
+-- --------------------------------------------------------------------------
+--
+-- 1. Progression and volume participation should be treated as interacting
+--    setup-quality dimensions rather than independent additive flags.
+--
+-- 2. Tightness alone is not sufficient.
+--
+-- 3. Lower pivot-to-stop risk is not currently supported as a predictor
+--    of post-breakout expansion. Risk remains a separate risk-management
+--    dimension.
+--
+-- 4. Volume dry-up and constructive volume participation answer different
+--    questions. Do NOT redefine SR06 using this research.
+--
+-- 5. Episode persistence alone is not sufficient.
+--
+-- 6. No minimum episode length is currently justified.
+--
+-- 7. Recency, especially conditions around breakout, appears more useful
+--    than simple whole-episode persistence.
+--
+-- 8. Do NOT create an SR10 production score/table from H1 yet.
+--
+-- --------------------------------------------------------------------------
+-- VALIDATION PLAN
+-- --------------------------------------------------------------------------
+--
+-- Freeze H1 at this point.
+--
+-- Do NOT optimize the 90% volume threshold further using the existing
+-- 32 mature episodes.
+--
+-- Allow currently immature RESOLVED_BREAKOUT episodes to accumulate
+-- 10 future trading sessions.
+--
+-- Test H1 against that later population as an out-of-sample validation.
+--
+-- Only after validation should thresholds, scoring, weighting and the
+-- physical SR10 production architecture be considered.
+--
+-- ============================================================================
