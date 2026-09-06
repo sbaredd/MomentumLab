@@ -287,6 +287,91 @@
 --   sample. Further evaluation should use new out-of-sample episodes.
 --
 -- --------------------------------------------------------------------------
+-- H4: BREAKOUT-DAY RELATIVE VOLUME INTENSITY
+-- --------------------------------------------------------------------------
+--
+-- Hypothesis:
+--
+--   Among setups already exhibiting constructive progression and recent
+--   volume participation, stronger relative volume on the actual breakout
+--   day may produce stronger post-breakout expansion.
+--
+-- H1-qualified population:
+--
+--   prebreakout_5d_return_pct > 0
+--   AND recent_5_volume_vs_20d_pct >= 90
+--
+-- Feature:
+--
+--   breakout_relative_volume = relative_volume_20
+--   measured on episode_end_date / breakout date.
+--
+-- Mature H1-qualified episodes:
+--
+--   N = 17
+--   Avg breakout relative volume = 3.02x
+--   Median breakout relative volume = 1.63x
+--   Avg MFE_10D = 3.31%
+--
+-- Continuous relationship:
+--
+--   Pearson correlation
+--       Corr(breakout_relative_volume, MFE_10D) = -0.039
+--
+--   Spearman rank correlation
+--       Corr(rank(breakout_relative_volume), rank(MFE_10D)) = +0.081
+--
+--   Both relationships are effectively zero.
+--
+-- Observed strong-breakout cases:
+--
+--   HINDZINC     RVOL = 0.85x    MFE = 11.22%
+--   SHRIRAMFIN   RVOL = 1.24x    MFE =  5.82%
+--   HINDALCO     RVOL = 1.63x    MFE =  6.66%
+--   SIEMENS      RVOL = 1.75x    MFE =  5.07%
+--   BOSCHLTD     RVOL = 5.36x    MFE =  8.73%
+--
+-- High breakout-day relative volume was not sufficient for strong
+-- post-breakout expansion.
+--
+-- Examples:
+--
+--   TATACAP      RVOL = 4.00x    MFE = 0.51%
+--   ENRIN        RVOL = 20.36x   MFE = 2.20%
+--
+-- Interpretation:
+--
+--   Strong outcomes occurred across a wide range of breakout-day relative
+--   volume levels.
+--
+--   The extreme ENRIN observation does not explain the absence of a
+--   relationship: Pearson and rank-based Spearman correlations both remain
+--   close to zero.
+--
+-- Conclusion:
+--
+--   H4 is NOT SUPPORTED.
+--
+--   Within the current H1-qualified sample, breakout-day relative volume
+--   intensity does not independently predict subsequent 10-session MFE.
+--
+-- Architectural implication:
+--
+--   Breakout-day relative volume should remain a volume / execution-context
+--   feature and should NOT be duplicated as an SR10 setup-quality weight
+--   based on the current evidence.
+--
+--   This result does not invalidate the H1 volume-participation observation.
+--   H1 measures recent setup context, whereas H4 tests the intensity of
+--   volume specifically on the breakout day.
+--
+-- Research discipline:
+--
+--   Do NOT optimize breakout-relative-volume thresholds (for example
+--   1.5x, 2x or 3x) on this 17-episode sample. Further testing should use
+--   new out-of-sample episodes.
+--
+-- --------------------------------------------------------------------------
 -- ARCHITECTURAL CONCLUSIONS
 -- --------------------------------------------------------------------------
 --
