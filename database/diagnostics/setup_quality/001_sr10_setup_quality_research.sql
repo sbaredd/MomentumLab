@@ -1,5 +1,4 @@
 -- ============================================================================
--- SR10 SETUP QUALITY RESEARCH
 -- SR10 SETUP QUALITY HYPOTHESIS RESEARCH
 -- ============================================================================
 --
@@ -210,6 +209,82 @@
 --
 --   Structural leadership context and post-breakout expansion quality
 --   should remain separate concerns.
+--
+-- --------------------------------------------------------------------------
+-- H3: TIGHTNESS CONDITIONAL ON PROGRESSION + VOLUME
+-- --------------------------------------------------------------------------
+--
+-- Hypothesis:
+--
+--   Among setups already exhibiting constructive progression and volume
+--   participation, tighter recent price action may produce stronger
+--   post-breakout expansion.
+--
+-- H1-qualified population:
+--
+--   prebreakout_5d_return_pct > 0
+--   AND recent_5_volume_vs_20d_pct >= 90
+--
+-- Mature H1-qualified episodes:
+--
+--   N = 17
+--   Avg recent_5_range_pct = 6.06%
+--   Avg MFE_10D = 3.31%
+--
+-- Tightness terciles:
+--
+--   T1: 3.80% to 5.23%
+--       N = 6
+--       Avg MFE = 3.81%
+--       Median MFE = 2.53%
+--       Strong rate = 33.33%
+--
+--   T2: 5.24% to 6.46%
+--       N = 6
+--       Avg MFE = 3.37%
+--       Median MFE = 1.93%
+--       Strong rate = 33.33%
+--
+--   T3: 6.50% to 9.84%
+--       N = 5
+--       Avg MFE = 2.63%
+--       Median MFE = 3.10%
+--       Strong rate = 20.00%
+--
+-- Continuous relationship:
+--
+--   Correlation(recent_5_range_pct, MFE_10D) = -0.167
+--
+-- Interpretation:
+--
+--   Average MFE declined from the tightest to the loosest tercile:
+--
+--       3.81% -> 3.37% -> 2.63%
+--
+--   However, median MFE did not show the same monotonic relationship,
+--   and the continuous correlation was weak.
+--
+-- Conclusion:
+--
+--   H3 is WEAK / INCONCLUSIVE.
+--
+--   The current sample provides limited directional evidence that tighter
+--   recent price action may improve post-breakout expansion after
+--   progression + volume qualification, but the evidence is insufficient
+--   to establish tightness as an independent SR10 discriminator.
+--
+-- Architectural implication:
+--
+--   recent_5_range_pct should remain a tightness / setup-structure feature
+--   under SR05.
+--
+--   Current evidence does NOT justify duplicating SR05 tightness inside
+--   SR10 or assigning an SR10 weight based on tightness.
+--
+-- Research discipline:
+--
+--   Do NOT optimize additional tightness thresholds on this 17-episode
+--   sample. Further evaluation should use new out-of-sample episodes.
 --
 -- --------------------------------------------------------------------------
 -- ARCHITECTURAL CONCLUSIONS
