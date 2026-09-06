@@ -1,6 +1,6 @@
 -- ============================================================================
 -- SR10 SETUP QUALITY RESEARCH
--- HYPOTHESIS H1: CONSTRUCTIVE PROGRESSION + VOLUME PARTICIPATION
+-- SR10 SETUP QUALITY HYPOTHESIS RESEARCH
 -- ============================================================================
 --
 -- Research outcome:
@@ -137,6 +137,79 @@
 --       Strong rate = 0%
 --       Avg MFE = 1.46%
 --       Median MFE = 1.01%
+--
+-- --------------------------------------------------------------------------
+-- H2: 52-WEEK-HIGH PROXIMITY
+-- --------------------------------------------------------------------------
+--
+-- Hypothesis:
+--
+--   Breakouts occurring closer to the stock's 52-week high may produce
+--   stronger post-breakout expansion.
+--
+-- Feature:
+--
+--   pct_from_52w_high =
+--       (adjusted breakout close / highest_high_252 - 1) * 100
+--
+-- Corporate-action-adjusted prices were used for this analysis.
+--
+-- Mature RESOLVED_BREAKOUT episodes:
+--
+--   Total mature episodes             = 32
+--   With valid highest_high_252        = 28
+--
+-- Continuous relationship:
+--
+--   Correlation with MFE_10D           = -0.141
+--   Avg pct_from_52w_high              = -5.36%
+--   Avg MFE_10D                        = 2.70%
+--
+-- Proximity quartiles:
+--
+--   Q1: -25.38% to -12.29%
+--       N = 7
+--       Avg MFE = 2.98%
+--       Median MFE = 1.07%
+--       Strong rate = 28.57%
+--
+--   Q2: -12.12% to -0.95%
+--       N = 7
+--       Avg MFE = 3.08%
+--       Median MFE = 3.64%
+--       Strong rate = 28.57%
+--
+--   Q3: +0.05% to +0.43%
+--       N = 7
+--       Avg MFE = 2.27%
+--       Median MFE = 1.21%
+--       Strong rate = 14.29%
+--
+--   Q4: +0.70% to +5.93%
+--       N = 7
+--       Avg MFE = 2.47%
+--       Median MFE = 1.60%
+--       Strong rate = 14.29%
+--
+-- Strong-breakout cases occurred across a wide range of 52-week-high
+-- proximity, including substantially below the prior high.
+--
+-- Conclusion:
+--
+--   H2 is NOT SUPPORTED as an independent predictor of post-breakout
+--   expansion in the current mature sample.
+--
+--   No monotonic improvement in MFE was observed as breakout price moved
+--   closer to or above the 52-week high.
+--
+-- Architectural implication:
+--
+--   52-week-high proximity may remain useful as a structural / leadership
+--   context feature, but current evidence does NOT justify including it as
+--   an SR10 setup-quality score or weight.
+--
+--   Structural leadership context and post-breakout expansion quality
+--   should remain separate concerns.
 --
 -- --------------------------------------------------------------------------
 -- ARCHITECTURAL CONCLUSIONS
