@@ -53,6 +53,7 @@ SQL_FILES = [
     "database/features/setup_readiness/045a_initialize_setup_readiness_daily.sql",
     "database/features/setup_readiness/046_sr01_breakout_state.sql",
     "database/features/setup_readiness/047_sr02_pivot_proximity.sql",
+    "database/features/setup_readiness/047a_sr02a_pivot_proximity_direction.sql",
     "database/features/setup_readiness/048_sr03_breakout_volume.sql",
     "database/features/setup_readiness/049_sr03_breakout_volume_state.sql",
     "database/features/setup_readiness/050_sr04_breakout_extension.sql",
@@ -237,6 +238,36 @@ def validate_result(
 
             COUNT(*) FILTER
             (
+                WHERE pivot_proximity_direction IS NOT NULL
+            ) AS sr02a_rows,
+
+            COUNT(*) FILTER
+            (
+                WHERE pivot_proximity_pct IS NOT NULL
+                    AND EXISTS
+                    (
+                        SELECT 1
+
+                        FROM ref.trading_calendar cal
+
+                        JOIN trn.stock_setup_readiness_daily prev
+                            ON prev.security_id =
+                            stock_setup_readiness_daily.security_id
+                        AND prev.trade_date =
+                            cal.previous_trading_date
+                        AND prev.pivot_date =
+                            stock_setup_readiness_daily.pivot_date
+                        AND prev.pivot_price =
+                            stock_setup_readiness_daily.pivot_price
+                        AND prev.pivot_proximity_pct IS NOT NULL
+
+                        WHERE cal.traded_date =
+                                stock_setup_readiness_daily.trade_date
+                    )
+                ) AS sr02a_expected_rows,
+
+            COUNT(*) FILTER
+            (
                 WHERE relative_volume_20 IS NOT NULL
             ) AS sr03_rows,
 
@@ -285,6 +316,8 @@ def validate_result(
         total_rows,
         sr01_rows,
         sr02_rows,
+        sr02a_rows,
+        sr02a_expected_rows,
         sr03_rows,
         sr04_rows,
         sr05_rows,
@@ -304,6 +337,14 @@ def validate_result(
 
         raise RuntimeError(
             f"No Setup Readiness rows produced for {evaluation_date}"
+        )
+
+    if sr02a_rows != sr02a_expected_rows:
+
+        raise RuntimeError(
+            f"SR02A pivot proximity direction validation failed "
+            f"for {evaluation_date}: "
+            f"{sr02a_rows}/{sr02a_expected_rows} expected rows populated"
         )
 
     required_features = {
@@ -392,6 +433,8 @@ def main():
             total_rows,
             sr01_rows,
             sr02_rows,
+            sr02a_rows,
+            sr02a_expected_rows,
             sr03_rows,
             sr04_rows,
             sr05_rows,
@@ -415,6 +458,11 @@ def main():
 
         print(
             f"SR02 pivot proximity   : {sr02_rows}"
+        )
+
+        print(
+            f"SR02A pivot direction  : "
+            f"{sr02a_rows}/{sr02a_expected_rows}"
         )
 
         print(
