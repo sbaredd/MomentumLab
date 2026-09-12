@@ -353,13 +353,47 @@ def validate_result(
             "no setup episodes exist after population."
         )
 
-    if active_episodes != expected_active_rows:
+    current_episode_coverage_sql = """
+        SELECT COUNT(*)
+        FROM trn.stock_setup_readiness_daily r
+        WHERE r.trade_date = %s
+          AND r.pivot_date IS NOT NULL
+          AND r.pivot_price IS NOT NULL
+          AND EXISTS
+          (
+              SELECT 1
+              FROM trn.stock_setup_episode e
+              WHERE e.security_id = r.security_id
+                AND e.pivot_date = r.pivot_date
+                AND e.pivot_price = r.pivot_price
+                AND e.episode_start_date <= r.trade_date
+                AND
+                (
+                    e.episode_status = 'ACTIVE'
+                    OR e.episode_end_date = r.trade_date
+                )
+          );
+    """
+
+    with connection.cursor() as cursor:
+
+        cursor.execute(
+            current_episode_coverage_sql,
+            (
+                evaluation_date,
+            )
+        )
+
+        covered_current_pivot_rows = cursor.fetchone()[0]
+
+    if covered_current_pivot_rows != expected_active_rows:
 
         raise RuntimeError(
             "SR09 validation failed: "
-            f"ACTIVE episodes = {active_episodes}, "
-            f"but pivot-bearing readiness rows for "
-            f"{evaluation_date} = {expected_active_rows}."
+            f"{covered_current_pivot_rows} current pivot-bearing rows "
+            f"map to a current episode, but "
+            f"{expected_active_rows} pivot-bearing readiness rows exist "
+            f"for {evaluation_date}."
         )
 
     if invalid_end_dates != 0:
