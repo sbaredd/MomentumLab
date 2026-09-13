@@ -183,3 +183,68 @@ No ranking weight or production threshold has been assigned.
 
 Further threshold optimization on the current sample is intentionally
 stopped to avoid threshold mining.
+## Research Outcome CR08 - Structural Entry Risk
+
+Feature:
+
+pivot_to_stop_risk_atr
+
+### Quartile Test
+
+Structural entry risk was evaluated using quartiles across the same
+first-V1-entry episode sample.
+
+| Quartile | Structural Risk | Entries | Breakouts | Breakout Rate |
+|----------|-----------------|---------|-----------|---------------|
+| Q1 | 1.08-1.73 ATR | 39 | 11 | 28.21% |
+| Q2 | 1.75-2.21 ATR | 38 | 12 | 31.58% |
+| Q3 | 2.22-2.96 ATR | 38 | 15 | 39.47% |
+| Q4 | 3.01-5.69 ATR | 38 | 14 | 36.84% |
+
+### Interpretation
+
+Lower structural entry risk did not predict a higher probability of
+crossing the pivot within the following five sessions.
+
+Breakout conversion increased from Q1 through Q3 and declined only
+slightly in Q4.
+
+There is therefore no evidence of a useful monotonic relationship between
+lower structural risk and near-term breakout occurrence.
+
+### Separation of Concerns
+
+SR08 answers a different question from the supported Candidate Ranking
+features.
+
+Candidate Ranking asks:
+
+Which eligible setup is more likely to break out?
+
+Structural entry risk asks:
+
+If the setup is traded, how much structural risk must be accepted?
+
+A candidate can therefore have high breakout probability while still
+requiring an unattractive stop distance.
+
+SR08 should not be forced into the breakout-probability ranking model
+solely because structural risk is important to trade execution.
+
+### Conclusion
+
+Status: NOT SUPPORTED AS BREAKOUT-PROBABILITY RANKING FACTOR
+
+SR08 remains valuable for downstream research into:
+
+- tradeability
+- entry quality
+- stop placement
+- position sizing
+- expected reward relative to structural risk
+
+Further CR08 threshold optimization and interaction mining on the current
+Candidate Ranking sample are intentionally stopped.
+
+SR08 is retained as an execution/risk feature rather than promoted to
+Candidate Ranking.
