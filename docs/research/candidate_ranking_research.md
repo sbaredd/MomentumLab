@@ -94,3 +94,92 @@ Do not:
 
 Each additional ranking feature must demonstrate incremental information
 beyond the already-supported signals.
+
+## Research Outcome CR06 - Recent Volume Participation
+
+Feature:
+
+recent_5_volume_vs_20d_pct
+
+### Initial Quartile Test
+
+The feature was evaluated using quartiles across the same first-V1-entry
+episode sample.
+
+| Quartile | Volume vs 20D | Entries | Breakouts | Breakout Rate |
+|----------|---------------|---------|-----------|---------------|
+| Q1 | 36.82-71.81% | 39 | 13 | 33.33% |
+| Q2 | 72.30-92.57% | 38 | 7 | 18.42% |
+| Q3 | 92.97-116.93% | 38 | 12 | 31.58% |
+| Q4 | 117.14-205.33% | 38 | 20 | 52.63% |
+
+The relationship was not monotonic in the conventional volume dry-up
+direction.
+
+The highest-volume quartile produced the strongest observed breakout
+conversion.
+
+### Independence from CR03 - Price Progression
+
+Q4 remained strong after separating candidates by
+prebreakout_5d_return_pct.
+
+For progression >= 2%:
+
+- Q4: 18 entries
+- Breakouts: 11
+- Breakout rate: 61.11%
+
+For progression < 2%:
+
+- Q4: 20 entries
+- Breakouts: 9
+- Breakout rate: 45.00%
+
+Therefore the Q4 effect was not explained solely by strong pre-breakout
+price progression.
+
+### Independence from CR01 - Pivot Proximity
+
+Q4 was compared with Q1-Q3 within each Candidate Selection V1 proximity
+band.
+
+| Proximity | Q1-Q3 Rate | Q4 Rate |
+|-----------|------------|---------|
+| 0-1% | 76.92% | 83.33% |
+| 1-2% | 21.62% | 85.71% |
+| 2-3% | 25.81% | 33.33% |
+| 3-4% | 17.65% | 42.86% |
+
+Q4 outperformed Q1-Q3 in all four proximity bands.
+
+The individual cells are small and must not be converted directly into
+trading rules.
+
+### Interpretation
+
+For Candidate Ranking, the evidence currently favors elevated recent
+participation rather than volume dry-up.
+
+This does not invalidate volume contraction as a chart-quality concept.
+It indicates that, among Candidate Selection V1 eligible securities,
+higher recent participation may contain information about the probability
+of crossing the pivot within the next five sessions.
+
+The current Q4 boundary of approximately 117% is sample-derived and must
+not be treated as a production threshold.
+
+### Conclusion
+
+Status: PROMOTED TO RANKING CANDIDATE
+
+CR06 has demonstrated incremental information after controlling separately
+for:
+
+- CR01 pivot proximity
+- CR03 pre-breakout price progression
+
+No ranking weight or production threshold has been assigned.
+
+Further threshold optimization on the current sample is intentionally
+stopped to avoid threshold mining.
