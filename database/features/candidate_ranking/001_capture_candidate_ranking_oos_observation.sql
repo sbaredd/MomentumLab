@@ -1,4 +1,4 @@
-﻿-- ============================================================================
+-- ============================================================================
 -- MomentumLab
 -- Feature     : Candidate Ranking V1 OOS Observation Capture
 -- File        : 001_capture_candidate_ranking_oos_observation.sql
