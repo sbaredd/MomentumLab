@@ -97,6 +97,7 @@ SELECT
     pivot_proximity_direction
 FROM first_v1_entry
 WHERE observation_date >= DATE '2026-09-14'
+  AND observation_date = :evaluation_date
 
 ON CONFLICT
 (
