@@ -44,21 +44,37 @@ DB_CONFIG = {
 }
 
 
-def get_input_file():
+def get_input_path():
     if len(sys.argv) < 2:
         raise ValueError(
             "Usage: python scripts\\import_nse_delivery.py "
-            "<MTO_file> [--apply]"
+            "<MTO_file_or_directory> [--apply]"
         )
 
-    file_path = Path(sys.argv[1]).resolve()
+    input_path = Path(sys.argv[1]).resolve()
 
-    if not file_path.exists():
+    if not input_path.exists():
         raise FileNotFoundError(
-            f"Input file does not exist: {file_path}"
+            f"Input path does not exist: {input_path}"
         )
 
-    return file_path
+    return input_path
+
+
+def resolve_files(input_path):
+    if input_path.is_file():
+        return [input_path]
+
+    files = sorted(
+        input_path.glob("MTO_*.DAT")
+    )
+
+    if not files:
+        raise ValueError(
+            f"No MTO_*.DAT files found in: {input_path}"
+        )
+
+    return files
 
 
 def is_apply_mode():
@@ -285,103 +301,86 @@ def apply_updates(
 
     connection.commit()
 
+    return len(matched)
 
 def main():
-    file_path = get_input_file()
+    input_path = get_input_path()
     apply_mode = is_apply_mode()
+    files = resolve_files(input_path)
 
-    lines = file_path.read_text(
-        encoding="utf-8",
-        errors="replace"
-    ).splitlines()
-
-    traded_date = read_trade_date(lines)
-
-    records = parse_eq_records(lines)
-
-    connection = None
+    connection = psycopg2.connect(**DB_CONFIG)
 
     try:
-        connection = psycopg2.connect(
-            **DB_CONFIG
-        )
-
-        bhavdata = fetch_bhavdata_rows(
-            connection,
-            traded_date
-        )
-
-        (
-            matched,
-            unmatched_mto,
-            unmatched_bhavdata,
-            percentage_errors,
-        ) = reconcile(
-            records,
-            bhavdata
-        )
-
-        print()
-        print("=" * 80)
-        print("NSE DELIVERY IMPORT RECONCILIATION")
-        print("=" * 80)
-        print(f"File                  : {file_path.name}")
-        print(f"Trade date            : {traded_date}")
-        print(f"MTO EQ rows           : {len(records):,}")
-        print(f"Bhavdata EQ rows      : {len(bhavdata):,}")
-        print(f"Matched rows          : {len(matched):,}")
-        print(f"Unmatched MTO rows    : {len(unmatched_mto):,}")
-        print(f"Unmatched bhav rows   : {len(unmatched_bhavdata):,}")
-        print(f"MTO percentage errors : {len(percentage_errors):,}")
-        print(f"Mode                  : {'APPLY' if apply_mode else 'DRY RUN'}")
-        print("=" * 80)
-
-        if unmatched_mto:
+        for file_path in files:
             print()
-            print("UNMATCHED MTO:")
-            for row in unmatched_mto[:20]:
-                print(row)
+            print("=" * 80)
+            print(f"Processing: {file_path.name}")
+            print("=" * 80)
 
-        if unmatched_bhavdata:
-            print()
-            print("UNMATCHED BHAVDATA:")
-            for row in unmatched_bhavdata[:20]:
-                print(row)
+            lines = file_path.read_text(
+                encoding="utf-8",
+                errors="replace"
+            ).splitlines()
 
-        if percentage_errors:
-            print()
-            print("MTO PERCENTAGE ERRORS:")
-            for row in percentage_errors[:20]:
-                print(row)
+            traded_date = read_trade_date(lines)
+            records = parse_eq_records(lines)
 
-        if apply_mode:
-            apply_updates(
+            bhavdata = fetch_bhavdata_rows(
                 connection,
-                traded_date,
-                matched
+                traded_date
+            )
+
+            (
+                matched,
+                unmatched_mto,
+                unmatched_bhavdata,
+                percentage_errors,
+            ) = reconcile(
+                records,
+                bhavdata
             )
 
             print()
-            print(
-                f"Delivery rows updated : "
-                f"{len(matched):,}"
-            )
+            print("NSE DELIVERY IMPORT RECONCILIATION")
+            print("-" * 80)
+            print(f"File                  : {file_path.name}")
+            print(f"Trade date            : {traded_date}")
+            print(f"MTO EQ rows           : {len(records):,}")
+            print(f"Bhavdata EQ rows      : {len(bhavdata):,}")
+            print(f"Matched rows          : {len(matched):,}")
+            print(f"Unmatched MTO rows    : {len(unmatched_mto):,}")
+            print(f"Unmatched bhav rows   : {len(unmatched_bhavdata):,}")
+            print(f"MTO percentage errors : {len(percentage_errors):,}")
+            print(f"Mode                  : {'APPLY' if apply_mode else 'DRY RUN'}")
+            print("-" * 80)
 
-        else:
-            print()
-            print(
-                "Dry run only. "
-                "No database changes made."
-            )
+            if unmatched_mto:
+                print("\nUNMATCHED MTO:")
+                for row in unmatched_mto:
+                    print(row)
 
-    except Exception:
-        if connection is not None:
-            connection.rollback()
-        raise
+            if unmatched_bhavdata:
+                print("\nUNMATCHED BHAVDATA:")
+                for row in unmatched_bhavdata:
+                    print(row)
+
+            if percentage_errors:
+                print("\nMTO PERCENTAGE ERRORS:")
+                for row in percentage_errors:
+                    print(row)
+
+            if apply_mode:
+                updated = apply_updates(
+                    connection,
+                    traded_date,
+                    matched
+                )
+                print(f"\nDelivery rows updated : {updated:,}")
+            else:
+                print("\nDry run only. No database changes made.")
 
     finally:
-        if connection is not None:
-            connection.close()
+        connection.close()
 
 
 if __name__ == "__main__":
